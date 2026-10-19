@@ -124,19 +124,24 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow">Southlake & DFW Luxury Real Estate</p>
             <h1 id="hero-title">
-              Before You List Your Southlake Home,{" "}
-              <em>Know What You’re Really Working With.</em>
+              Selling Your Luxury Property?{" "}
+              <em>
+                The Right Strategy Starts Long Before Your Home Reaches the
+                Market.
+              </em>
             </h1>
             <p className="hero-description">
-              Considering selling a <strong>$1M+ property?</strong> Get a
-              private <strong>Home Value & Selling Strategy Review</strong>{" "}
-              before you choose a price, invest in preparation, or put your home
-              on the market.
+              Considering selling a{" "}
+              <strong>$1M+ property in Southlake or DFW?</strong> Explore your
+              home’s market potential and a selling approach tailored to its
+              distinctive qualities. Request your complimentary, private{" "}
+              <strong>Home Value & Selling Strategy Review</strong> with Karin
+              before you decide on pricing, preparation or listing.
             </p>
             <ReviewLink />
             <p className="reassurance">
               <ShieldCheck aria-hidden="true" />
-              Private consultation <span aria-hidden="true">·</span> No
+              Complimentary consultation <span aria-hidden="true">·</span> No
               obligation
             </p>
           </div>
@@ -200,12 +205,16 @@ export default function Home() {
         <section className="container intro">
           <div>
             <p className="section-label eyebrow">Beyond the number</p>
-            <h2>A $1M+ Home Deserves More Than an Online Estimate.</h2>
+            <h2>
+              Exceptional Properties Deserve an Exceptional Approach to
+              Valuation.
+            </h2>
             <p className="intro-description">
-              An online estimate can give you a number. It can’t tell you how
-              your property compares with competing homes, which preparation may
-              actually matter, or how the property should be positioned when it
-              goes to market.
+              An online valuation may provide a number. It cannot fully reflect
+              your home’s distinctive character or how it should be presented to
+              discerning buyers. A thoughtful, personalized review considers
+              recent sales, competing properties and preparation priorities, so
+              you can approach pricing and positioning with greater clarity.
             </p>
             <a className="text-link" href="#request-review">
               Get My Private Seller Review
@@ -214,11 +223,11 @@ export default function Home() {
           </div>
           <div className="questions">
             {[
-              "What makes this property different?",
-              "What are buyers comparing it against?",
-              "Which improvements are worth considering?",
-              "How should the property be positioned?",
-              "What does the current competition look like?",
+              "Which qualities distinguish your property?",
+              "What will discerning buyers compare it with?",
+              "Which refinements deserve your investment?",
+              "How can its presentation express its value?",
+              "Where does it stand among competing listings?",
             ].map((q, i) => (
               <div className="question" key={q}>
                 <span>0{i + 1}</span>
@@ -267,24 +276,25 @@ export default function Home() {
           <div className="container decisions-inner">
             <div>
               <p className="section-label eyebrow light">
-                Before the sign goes up
+                Before your market debut
               </p>
               <h2>
-                The Biggest Selling Decisions Are Made Before the Sign Goes in
-                the Yard.
+                The Most Important Decisions in Selling an Exceptional Home
+                Happen Before It Reaches the Market.
               </h2>
               <p className="decisions-intro">
-                Before your home goes live, you may already have made decisions
-                about price, preparation and positioning that affect how buyers
-                respond.
+                Your property’s first impression begins with decisions about
+                pricing, preparation and presentation. Consider them together
+                before launch, with a strategy shaped around your home, your
+                goals and the buyers you want to reach.
               </p>
             </div>
             <div>
               <div className="decisions-list">
                 {[
-                  "What price should you ask?",
-                  "What should you change — and what should you leave alone?",
-                  "How should your property compete for buyer attention?",
+                  "What pricing approach reflects your home and its market?",
+                  "What deserves refinement — and what already sets your home apart?",
+                  "How will its presentation speak to discerning buyers?",
                 ].map((t, i) => (
                   <div className="decision" key={t}>
                     <span>0{i + 1}</span>
@@ -296,11 +306,12 @@ export default function Home() {
                 The question isn’t simply “What is my home worth?”
                 <br />
                 <em>
-                  It’s “How should I bring this particular property to market?”
+                  It’s “How do I position my property to realize its potential
+                  in today’s luxury market?”
                 </em>
               </p>
               <a className="text-link" href="#request-review">
-                Let’s Look at Your Property
+                Let’s Explore Your Property’s Potential
                 <ArrowRight aria-hidden="true" />
               </a>
             </div>
@@ -351,7 +362,10 @@ export default function Home() {
                 <p className="section-label eyebrow">
                   The details make a difference
                 </p>
-                <h2>See the Attention That Goes Into Preparing a Property.</h2>
+                <h2>
+                  Discover the Thoughtful Preparation Behind an Exceptional
+                  Property Presentation.
+                </h2>
               </div>
               <p>
                 A closer look at property presentation from Karin’s publicly
