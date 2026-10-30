@@ -24,17 +24,24 @@ export default function Privacy() {
       </p>
       <h2>How your information is used</h2>
       <p>
-        Your submission is stored to handle your inquiry and support a
-        conversation about your property. Submitting the form requests a
-        response about this inquiry; it does not enroll you in a marketing
-        newsletter.
+        Your submission is sent to Formspree, the service used to receive and
+        store these inquiries and send email notifications to the designated
+        recipient managing them. The information is used to respond to your
+        inquiry and support a conversation about your property. Submitting the
+        form does not enroll you in a marketing newsletter. Read{" "}
+        <a href="https://formspree.io/legal/privacy-policy/">
+          Formspree’s privacy policy
+        </a>{" "}
+        for details about its handling of information.
       </p>
       <h2>Technical information</h2>
       <p>
         Campaign parameters, when present in the page URL, are saved with the
-        request to identify the source of an inquiry. A daily hashed network
-        identifier helps limit repeated submissions. This page does not load
-        advertising or analytics trackers.
+        request to identify the source of an inquiry. Formspree receives
+        technical information associated with the request, and its submission
+        processing may include spam and security checks. The site also makes a
+        submission-confirmation event available to any analytics tools its
+        operator connects; that event contains no contact or property details.
       </p>
       <h2>Your choices</h2>
       <p>
