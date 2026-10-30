@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useForm } from "@formspree/react";
 import { ArrowRight, Check, LoaderCircle } from "lucide-react";
 import {
   Select,
@@ -10,14 +11,18 @@ import {
 } from "@/components/ui/select";
 import { z } from "zod";
 import { SITE } from "@/lib/site";
-function newRequestId() {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 15) | 64;
-  bytes[8] = (bytes[8] & 63) | 128;
-  const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-}
+// Notification recipients are managed in Formspree, not in this public code.
+const FORMSPREE_FORM_ID = "mbgdbwkk";
+const FORMSPREE_ENDPOINT = `https://formspree.io/f/${FORMSPREE_FORM_ID}`;
+const fieldLabels: Record<string, string> = {
+  name: "Name",
+  phone: "Phone",
+  email: "Email",
+  address: "Property address",
+  estimatedValue: "Estimated property value",
+  timeline: "Selling timeline",
+  message: "Message",
+};
 const values = ["$1M–$1.5M", "$1.5M–$2M", "$2M–$3M", "$3M+", "Not sure"];
 const timelines = [
   "Within 3 months",
@@ -26,10 +31,10 @@ const timelines = [
   "Just exploring",
 ];
 export default function LeadForm() {
-  const [state, setState] = useState<"idle" | "sending" | "success" | "error">(
-    "idle",
-  );
+  const [state, sendToFormspree, resetSubmission] =
+    useForm<Record<string, string>>(FORMSPREE_FORM_ID);
   const [error, setError] = useState("");
+  const [invalidField, setInvalidField] = useState("");
   const [value, setValue] = useState("");
   const [timeline, setTimeline] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -119,79 +124,100 @@ export default function LeadForm() {
     ).catch(() => {});
     return () => lifecycle.abort();
   }, []);
-  const requestId = useRef("");
+  const inFlight = useRef(false);
+  const conversionRecorded = useRef(false);
   const successRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!state.succeeded) return;
+    successRef.current?.focus();
+    if (conversionRecorded.current) return;
+    conversionRecorded.current = true;
+    const w = window as Window & { dataLayer?: Record<string, unknown>[] };
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({
+      event: "seller_review_submitted",
+      form_id: "private_seller_review",
+    });
+  }, [state.succeeded]);
+  useEffect(() => {
+    if (state.errors) errorRef.current?.focus();
+  }, [state.errors]);
+  function fieldIsInvalid(field: string) {
+    return (
+      invalidField === field ||
+      Boolean(state.errors?.getFieldErrors(field).length)
+    );
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (state === "sending") return;
+    if (inFlight.current || state.submitting || state.succeeded) return;
     const form = e.currentTarget;
+    if (!form.reportValidity()) return;
+    resetSubmission();
+    setError("");
+    setInvalidField("");
     const data = new FormData(form);
-    const phone = String(data.get("phone") || "");
-    if (phone.replace(/\D/g, "").length < 10) {
-      setError("Please enter a phone number with at least 10 digits.");
-      setState("error");
-      form.querySelector<HTMLInputElement>("[name=phone]")?.focus();
+    for (const field of ["name", "phone", "email", "address", "message"]) {
+      data.set(field, String(data.get(field) || "").trim());
+    }
+    const checks = [
+      {
+        field: "name",
+        valid: String(data.get("name")).length >= 2,
+        message: "Please enter your name.",
+      },
+      {
+        field: "phone",
+        valid: String(data.get("phone")).replace(/\D/g, "").length >= 10,
+        message: "Please enter a phone number with at least 10 digits.",
+      },
+      {
+        field: "address",
+        valid: String(data.get("address")).length >= 5,
+        message: "Please enter your property address, including city and ZIP.",
+      },
+    ];
+    const invalid = checks.find((check) => !check.valid);
+    if (invalid) {
+      setError(invalid.message);
+      setInvalidField(invalid.field);
+      const field = form.elements.namedItem(invalid.field) as HTMLInputElement;
+      field?.focus();
       return;
     }
-    setState("sending");
-    setError("");
-    if (!requestId.current) requestId.current = newRequestId();
+    // Email remains optional; when supplied, Formspree uses it for Reply-To.
+    if (!data.get("email")) data.delete("email");
     const params = new URLSearchParams(window.location.search);
-    const attribution = Object.fromEntries(
-      [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_content",
-        "utm_term",
-        "gclid",
-        "gbraid",
-        "wbraid",
-      ]
-        .filter((k) => params.has(k))
-        .map((k) => [k, params.get(k)?.slice(0, 300)]),
-    );
+    for (const key of [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_content",
+      "utm_term",
+      "gclid",
+      "gbraid",
+      "wbraid",
+    ]) {
+      const param = params.get(key);
+      if (param) data.set(key, param.slice(0, 300));
+    }
+    inFlight.current = true;
     try {
-      const response = await fetch("/api/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...Object.fromEntries(data),
-          estimatedValue: value || "Not sure",
-          timeline: timeline || "Just exploring",
-          requestId: requestId.current,
-          attribution,
-        }),
-      });
-      const result = (await response.json()) as {
-        ok?: boolean;
-        error?: string;
-      };
-      if (!response.ok || !result.ok)
-        throw new Error(
-          result.error ||
-            "Your request could not be saved. Please try again or text Karin directly.",
-        );
-      setState("success");
-      const w = window as Window & { dataLayer?: Record<string, unknown>[] };
-      w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push({
-        event: "seller_review_submitted",
-        form_id: "private_seller_review",
-      });
-      requestAnimationFrame(() => successRef.current?.focus());
-    } catch (err) {
+      await sendToFormspree(data);
+    } catch {
+      resetSubmission();
       setError(
-        err instanceof Error
-          ? err.message
-          : "Your request could not be saved. Please try again.",
+        "We couldn't confirm your request. Please try again or text Karin directly.",
       );
-      setState("error");
+      requestAnimationFrame(() => errorRef.current?.focus());
+    } finally {
+      inFlight.current = false;
     }
   }
   return (
     <div className="lead-form" id="seller-form">
-      {state === "success" ? (
+      {state.succeeded ? (
         <div
           className="form-success"
           ref={successRef}
@@ -203,8 +229,8 @@ export default function LeadForm() {
           </div>
           <h3>Your next move starts with a conversation.</h3>
           <p>
-            Your review request has been saved. Thank you for sharing a little
-            about your property.
+            Your review request has been received. Thank you for sharing a
+            little about your property.
           </p>
           <p>You can also connect with Karin directly by text.</p>
           <a className="text-link" href={SITE.sms}>
@@ -215,10 +241,28 @@ export default function LeadForm() {
       ) : (
         <form
           ref={formRef}
+          action={FORMSPREE_ENDPOINT}
+          method="POST"
           onSubmit={submit}
           aria-labelledby="form-title"
           aria-describedby="form-intro"
+          aria-busy={state.submitting}
         >
+          <input
+            type="hidden"
+            name="subject"
+            value="New Private Seller Review Request — Karin Kilburn"
+          />
+          <input
+            type="hidden"
+            name="estimatedValue"
+            value={value || "Not sure"}
+          />
+          <input
+            type="hidden"
+            name="timeline"
+            value={timeline || "Just exploring"}
+          />
           <h3 id="form-title">Request My Private Seller Review</h3>
           <p id="form-intro" className="form-intro">
             A few details to start an informed conversation.
@@ -233,7 +277,12 @@ export default function LeadForm() {
                 name="name"
                 autoComplete="name"
                 required
+                minLength={2}
                 maxLength={100}
+                aria-invalid={fieldIsInvalid("name") || undefined}
+                aria-describedby={
+                  fieldIsInvalid("name") ? "seller-form-error" : undefined
+                }
               />
             </div>
             <div className="field phone">
@@ -246,6 +295,10 @@ export default function LeadForm() {
                 required
                 maxLength={30}
                 inputMode="tel"
+                aria-invalid={fieldIsInvalid("phone") || undefined}
+                aria-describedby={
+                  fieldIsInvalid("phone") ? "seller-form-error" : undefined
+                }
               />
             </div>
             <div className="field email">
@@ -258,6 +311,10 @@ export default function LeadForm() {
                 type="email"
                 autoComplete="email"
                 maxLength={254}
+                aria-invalid={fieldIsInvalid("email") || undefined}
+                aria-describedby={
+                  fieldIsInvalid("email") ? "seller-form-error" : undefined
+                }
               />
             </div>
             <div className="field full">
@@ -267,14 +324,28 @@ export default function LeadForm() {
                 name="address"
                 autoComplete="street-address"
                 required
+                minLength={5}
                 maxLength={300}
                 placeholder="Street address, city and ZIP"
+                aria-invalid={fieldIsInvalid("address") || undefined}
+                aria-describedby={
+                  fieldIsInvalid("address") ? "seller-form-error" : undefined
+                }
               />
             </div>
             <div className="field value">
               <label htmlFor="seller-value">Estimated Property Value</label>
               <Select value={value} onValueChange={setValue}>
-                <SelectTrigger id="seller-value" className="form-select">
+                <SelectTrigger
+                  id="seller-value"
+                  className="form-select"
+                  aria-invalid={fieldIsInvalid("estimatedValue") || undefined}
+                  aria-describedby={
+                    fieldIsInvalid("estimatedValue")
+                      ? "seller-form-error"
+                      : undefined
+                  }
+                >
                   <SelectValue placeholder="Select a range" />
                 </SelectTrigger>
                 <SelectContent
@@ -292,7 +363,14 @@ export default function LeadForm() {
             <div className="field timeline">
               <label htmlFor="seller-timeline">Selling Timeline</label>
               <Select value={timeline} onValueChange={setTimeline}>
-                <SelectTrigger id="seller-timeline" className="form-select">
+                <SelectTrigger
+                  id="seller-timeline"
+                  className="form-select"
+                  aria-invalid={fieldIsInvalid("timeline") || undefined}
+                  aria-describedby={
+                    fieldIsInvalid("timeline") ? "seller-form-error" : undefined
+                  }
+                >
                   <SelectValue placeholder="Select a timeline" />
                 </SelectTrigger>
                 <SelectContent
@@ -316,32 +394,50 @@ export default function LeadForm() {
                 name="message"
                 placeholder="What would be helpful for Karin to know?"
                 maxLength={2000}
+                aria-invalid={fieldIsInvalid("message") || undefined}
+                aria-describedby={
+                  fieldIsInvalid("message") ? "seller-form-error" : undefined
+                }
               />
             </div>
             <div className="honey" aria-hidden="true">
               <label htmlFor="website">Website</label>
               <input
-                name="website"
+                name="_gotcha"
                 id="website"
                 tabIndex={-1}
                 autoComplete="off"
               />
             </div>
           </div>
-          {state === "error" && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
+          {(error || state.errors) && (
+            <div
+              id="seller-form-error"
+              ref={errorRef}
+              tabIndex={-1}
+              role="alert"
+              className="form-error"
+            >
+              <p>
+                {error ||
+                  "We couldn't confirm your request. Please check the details below, then try again or text Karin directly."}
+              </p>
+              {state.errors?.getFormErrors().map((item, index) => (
+                <p key={`form-${index}`}>{item.message}</p>
+              ))}
+              {state.errors?.getAllFieldErrors().map(([field, errors]) => (
+                <p key={field}>
+                  {fieldLabels[field] || field}:{" "}
+                  {errors.map((item) => item.message).join(" ")}
+                </p>
+              ))}
+            </div>
           )}
-          <button
-            className="button"
-            type="submit"
-            disabled={state === "sending"}
-          >
-            {state === "sending"
-              ? "Saving Your Request…"
+          <button className="button" type="submit" disabled={state.submitting}>
+            {state.submitting
+              ? "Sending Your Request…"
               : "Request My Private Seller Review"}
-            {state === "sending" ? (
+            {state.submitting ? (
               <LoaderCircle
                 size={17}
                 className="animate-spin"
